@@ -1,42 +1,39 @@
 import java.util.*;
 
 public class AStar {
-    private static int DEFAULT_HV_COST = 1; // Horizontal - Vertical Cost
-    private static int DEFAULT_DIAGONAL_COST = 1;
-    private int hvCost;
-    private int diagonalCost;
-    private Node[][] searchArea;
-    private PriorityQueue<Node> openList;
-    private Set<Node> closedSet;
-    private Node initialNode;
-    private Node finalNode;
+    private static int CUSTO_PADRAO = 1;
+    private int custo;
+    private Vertice[][] areaBusca;
+    private PriorityQueue<Vertice> verticesAbertos;
+    private Set<Vertice> verticesFechados;
+    private Vertice verticeInicial;
+    private Vertice verticeFinal;
 
-    public AStar(int rows, int cols, Node initialNode, Node finalNode, int hvCost, int diagonalCost) {
-        this.hvCost = hvCost;
-        this.diagonalCost = diagonalCost;
-        setInitialNode(initialNode);
-        setFinalNode(finalNode);
-        this.searchArea = new Node[rows][cols];
-        this.openList = new PriorityQueue<Node>(new Comparator<Node>() {
+    public AStar(int linhas, int colunas, Vertice verticeInicial, Vertice verticeFinal, int custo) {
+        this.custo = custo;
+        setVerticeInicial(verticeInicial);
+        setVerticeFinal(verticeFinal);
+        this.areaBusca = new Vertice[linhas][colunas];
+        this.verticesAbertos = new PriorityQueue<Vertice>(new Comparator<Vertice>() {
             @Override
-            public int compare(Node node0, Node node1) {
-                return Integer.compare(node0.getF(), node1.getF());
+            public int compare(Vertice vertice0, Vertice vertice1) {
+                return Integer.compare(vertice0.getF(), vertice1.getF());
             }
         });
-        setNodes();
-        this.closedSet = new HashSet<>();
+        setVertices();
+        this.verticesFechados = new HashSet<>();
     }
 
-    public AStar(int rows, int cols, Node initialNode, Node finalNode) {
-        this(rows, cols, initialNode, finalNode, DEFAULT_HV_COST, DEFAULT_DIAGONAL_COST);
+    public AStar(int linhas, int colunas, Vertice verticeInicial, Vertice verticeFinal) {
+        this(linhas, colunas, verticeInicial, verticeFinal, CUSTO_PADRAO);
     }
 
-    private void setNodes() {
-        for (int i = 0; i < searchArea.length; i++) {
-            for (int j = 0; j < searchArea[0].length; j++) {
-                Node node = new Node(i, j);
-                node.calculateHeuristic(getFinalNode());
-                this.searchArea[i][j] = node;
+    private void setVertices() {
+        for (int i = 0; i < areaBusca.length; i++) {
+            for (int j = 0; j < areaBusca[0].length; j++) {
+                Vertice vertice = new Vertice(i, j);
+                vertice.calcularHeuristica(getVerticeFinal());
+                this.areaBusca[i][j] = vertice;
             }
         }
     }
@@ -45,151 +42,143 @@ public class AStar {
         for (int i = 0; i < blocksArray.length; i++) {
             int row = blocksArray[i][0];
             int col = blocksArray[i][1];
-            setBlock(row, col);
+            setBloqueio(row, col);
         }
     }
 
-    public List<Node> findPath() {
-        openList.add(initialNode);
-        while (!isEmpty(openList)) {
-            Node currentNode = openList.poll();
-            closedSet.add(currentNode);
-            if (isFinalNode(currentNode)) {
-                return getPath(currentNode);
+    public List<Vertice> findPath() {
+        verticesAbertos.add(verticeInicial);
+        while (!ehVazio(verticesAbertos)) {
+            Vertice currentVertice = verticesAbertos.poll();
+            verticesFechados.add(currentVertice);
+            if (ehVerticeFinal(currentVertice)) {
+                return getPath(currentVertice);
             } else {
-                addAdjacentNodes(currentNode);
+                addAdjacentNodes(currentVertice);
             }
         }
-        return new ArrayList<Node>();
+        return new ArrayList<Vertice>();
     }
 
-    private List<Node> getPath(Node currentNode) {
-        List<Node> path = new ArrayList<Node>();
-        path.add(currentNode);
-        Node parent;
-        while ((parent = currentNode.getParent()) != null) {
+    private List<Vertice> getPath(Vertice currentVertice) {
+        List<Vertice> path = new ArrayList<Vertice>();
+        path.add(currentVertice);
+        Vertice parent;
+        while ((parent = currentVertice.getPai()) != null) {
             path.add(0, parent);
-            currentNode = parent;
+            currentVertice = parent;
         }
         return path;
     }
 
-    private void addAdjacentNodes(Node currentNode) {
-        addAdjacentUpperRow(currentNode);
-        addAdjacentMiddleRow(currentNode);
-        addAdjacentLowerRow(currentNode);
+    private void addAdjacentNodes(Vertice verticeAtual) {
+        addAdjacentUpperRow(verticeAtual);
+        addAdjacentMiddleRow(verticeAtual);
+        addAdjacentLowerRow(verticeAtual);
     }
 
-    private void addAdjacentLowerRow(Node currentNode) {
-        int row = currentNode.getRow();
-        int col = currentNode.getCol();
+    private void addAdjacentLowerRow(Vertice verticeAtual) {
+        int row = verticeAtual.getLinha();
+        int col = verticeAtual.getColuna();
         int lowerRow = row + 1;
-        if (lowerRow < getSearchArea().length) {
-            checkNode(currentNode, col, lowerRow, getHvCost());
+        if (lowerRow < getAreaBusca().length) {
+            verificaVertice(verticeAtual, col, lowerRow, getCusto());
         }
     }
 
-    private void addAdjacentMiddleRow(Node currentNode) {
-        int row = currentNode.getRow();
-        int col = currentNode.getCol();
+    private void addAdjacentMiddleRow(Vertice verticeAtual) {
+        int row = verticeAtual.getLinha();
+        int col = verticeAtual.getColuna();
         if (col - 1 >= 0) {
-            checkNode(currentNode, col - 1, row, getHvCost());
+            verificaVertice(verticeAtual, col - 1, row, getCusto());
         }
-        if (col + 1 < getSearchArea()[0].length) {
-            checkNode(currentNode, col + 1, row, getHvCost());
-        }
-    }
-
-    private void addAdjacentUpperRow(Node currentNode) {
-        int row = currentNode.getRow();
-        int col = currentNode.getCol();
-        int upperRow = row - 1;
-        if (upperRow >= 0) {
-            checkNode(currentNode, col, upperRow, getHvCost());
+        if (col + 1 < getAreaBusca()[0].length) {
+            verificaVertice(verticeAtual, col + 1, row, getCusto());
         }
     }
 
-    private void checkNode(Node currentNode, int col, int row, int cost) {
-        Node adjacentNode = getSearchArea()[row][col];
-        if (!adjacentNode.isBlock() && !getClosedSet().contains(adjacentNode)) {
-            if (!getOpenList().contains(adjacentNode)) {
-                adjacentNode.setNodeData(currentNode, cost);
-                getOpenList().add(adjacentNode);
+    private void addAdjacentUpperRow(Vertice verticeAtual) {
+        int linha = verticeAtual.getLinha();
+        int coluna = verticeAtual.getColuna();
+        int fileiraSuperior = linha - 1;
+        if (fileiraSuperior >= 0) {
+            verificaVertice(verticeAtual, coluna, fileiraSuperior, getCusto());
+        }
+    }
+
+    private void verificaVertice(Vertice verticeAtual, int coluna, int linha, int custo) {
+        Vertice verticeAdjacente = getAreaBusca()[linha][coluna];
+        if (!verticeAdjacente.isEhBloqueado() && !getVerticesFechados().contains(verticeAdjacente)) {
+            if (!getVerticesAbertos().contains(verticeAdjacente)) {
+                verticeAdjacente.setVerticeData(verticeAtual, custo);
+                getVerticesAbertos().add(verticeAdjacente);
             } else {
-                boolean changed = adjacentNode.checkBetterPath(currentNode, cost);
-                if (changed) {
-                    getOpenList().remove(adjacentNode);
-                    getOpenList().add(adjacentNode);
+                boolean mudado = verticeAdjacente.verificaMelhorCaminho(verticeAtual, custo);
+                if (mudado) {
+                    getVerticesAbertos().remove(verticeAdjacente);
+                    getVerticesAbertos().add(verticeAdjacente);
                 }
             }
         }
     }
 
-    private boolean isFinalNode(Node currentNode) {
-        return currentNode.equals(finalNode);
+    private boolean ehVerticeFinal(Vertice verticeAtual) {
+        return verticeAtual.equals(verticeFinal);
     }
 
-    private boolean isEmpty(PriorityQueue<Node> openList) {
-        return openList.size() == 0;
+    private boolean ehVazio(PriorityQueue<Vertice> verticesAbertos) {
+        return verticesAbertos.size() == 0;
     }
 
-    private void setBlock(int row, int col) {
-        this.searchArea[row][col].setBlock(true);
+    private void setBloqueio(int linha, int coluna) {
+        this.areaBusca[linha][coluna].setEhBloqueado(true);
     }
 
-    public Node getInitialNode() {
-        return initialNode;
+    public Vertice getVerticeInicial() {
+        return verticeInicial;
     }
 
-    public void setInitialNode(Node initialNode) {
-        this.initialNode = initialNode;
+    public void setVerticeInicial(Vertice verticeInicial) {
+        this.verticeInicial = verticeInicial;
     }
 
-    public Node getFinalNode() {
-        return finalNode;
+    public Vertice getVerticeFinal() {
+        return verticeFinal;
     }
 
-    public void setFinalNode(Node finalNode) {
-        this.finalNode = finalNode;
+    public void setVerticeFinal(Vertice verticeFinal) {
+        this.verticeFinal = verticeFinal;
     }
 
-    public Node[][] getSearchArea() {
-        return searchArea;
+    public Vertice[][] getAreaBusca() {
+        return areaBusca;
     }
 
-    public void setSearchArea(Node[][] searchArea) {
-        this.searchArea = searchArea;
+    public void setAreaBusca(Vertice[][] areaBusca) {
+        this.areaBusca = areaBusca;
     }
 
-    public PriorityQueue<Node> getOpenList() {
-        return openList;
+    public PriorityQueue<Vertice> getVerticesAbertos() {
+        return verticesAbertos;
     }
 
-    public void setOpenList(PriorityQueue<Node> openList) {
-        this.openList = openList;
+    public void setVerticesAbertos(PriorityQueue<Vertice> verticesAbertos) {
+        this.verticesAbertos = verticesAbertos;
     }
 
-    public Set<Node> getClosedSet() {
-        return closedSet;
+    public Set<Vertice> getVerticesFechados() {
+        return verticesFechados;
     }
 
-    public void setClosedSet(Set<Node> closedSet) {
-        this.closedSet = closedSet;
+    public void setVerticesFechados(Set<Vertice> verticesFechados) {
+        this.verticesFechados = verticesFechados;
     }
 
-    public int getHvCost() {
-        return hvCost;
+    public int getCusto() {
+        return custo;
     }
 
-    public void setHvCost(int hvCost) {
-        this.hvCost = hvCost;
-    }
-
-    private int getDiagonalCost() {
-        return diagonalCost;
-    }
-
-    private void setDiagonalCost(int diagonalCost) {
-        this.diagonalCost = diagonalCost;
+    public void setCusto(int custo) {
+        this.custo = custo;
     }
 }
